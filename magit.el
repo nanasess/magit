@@ -3867,6 +3867,7 @@ insert a line to tell how to insert more of them"
     (apply #'magit-git-section nil nil
            'magit-wash-commit
            "log"
+           "--ext-diff"
            "--max-count=1"
            "--pretty=medium"
            `(,@(if magit-have-abbrev (list "--no-abbrev-commit"))
@@ -4064,6 +4065,7 @@ if FULLY-QUALIFIED-NAME is non-nil."
              (remote-string (magit-remote-string remote remote-branch remote-rebase))
              (head (magit-git-string
                     "log"
+                    "--ext-diff"
                     "--max-count=1"
                     "--abbrev-commit"
                     (format "--abbrev=%s" magit-sha1-abbrev-length)
