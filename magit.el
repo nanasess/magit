@@ -2299,7 +2299,7 @@ involving HEAD."
       (magit-anything-unstaged-p)))
 
 (defun magit-commit-parents (commit)
-  (cdr (split-string (magit-git-string "rev-list" "-1" "--parents" commit))))
+  (cdr (split-string (magit-git-string "rev-list" "-1" "--parents" "--ext-diff" commit))))
 
 (defun magit-assert-one-parent (commit command)
   (when (> (length (magit-commit-parents commit)) 1)
@@ -2474,7 +2474,7 @@ involving HEAD."
         (magit-insert (or (match-string 1 ref) ref) face ?\s))))))
 
 (defun magit-format-rev-summary (rev)
-  (let ((s (magit-git-string "log" "-1"
+  (let ((s (magit-git-string "log" "-1" "--ext-diff"
                              (concat "--pretty=format:%h %s") rev)))
     (when s
       (string-match " " s)
@@ -4244,7 +4244,7 @@ stash at point, then prompt for a commit."
 (defun magit-refresh-commit-buffer (commit)
   (magit-git-insert-section (commitbuf nil)
       #'magit-wash-commit
-    "log" "-1" "--decorate=full"
+    "log" "-1" "--decorate=full" "--ext-diff"
     "--pretty=medium" (magit-diff-U-arg)
     "--cc" "-p" (and magit-show-diffstat "--stat")
     magit-diff-options commit))
@@ -4406,7 +4406,7 @@ can be used to override this."
                  (used (plist-get properties 'used)))
             (magit-with-section (section commit commit)
               (insert (magit-git-string
-                       "log" "-1"
+                       "log" "-1" "--ext-diff"
                        (if used
                            "--pretty=format:. %s"
                          "--pretty=format:* %s")
@@ -4422,7 +4422,7 @@ can be used to override this."
       "diff-files")))
 
 (defun magit-insert-staged-changes ()
-  (let ((no-commit (not (magit-git-success "log" "-1" "HEAD"))))
+  (let ((no-commit (not (magit-git-success "log" "--ext-diff" "-1" "HEAD"))))
     (when (or no-commit (magit-anything-staged-p))
       (let ((magit-current-diff-range (cons "HEAD" 'index))
             (base (if no-commit
@@ -4441,21 +4441,21 @@ can be used to override this."
         (magit-insert-unpulled-commits)
       (magit-git-insert-section (recent "Recent commits:")
           (apply-partially 'magit-wash-log 'unique)
-        "log" "--format=format:%h %s" "-n" "10"))))
+        "log" "--ext-diff" "--format=format:%h %s" "-n" "10"))))
 
 (defun magit-insert-unpulled-commits ()
   (let ((tracked (magit-get-tracked-branch nil t)))
     (when tracked
       (magit-git-insert-section (unpulled "Unpulled commits:")
           (apply-partially 'magit-wash-log 'unique)
-        "log" "--format=format:%h %s" (concat "HEAD.." tracked)))))
+        "log" "--ext-diff" "--format=format:%h %s" (concat "HEAD.." tracked)))))
 
 (defun magit-insert-unpushed-commits ()
   (let ((tracked (magit-get-tracked-branch nil t)))
     (when tracked
       (magit-git-insert-section (unpushed "Unpushed commits:")
           (apply-partially 'magit-wash-log 'unique)
-        "log" "--format=format:%h %s" (concat tracked "..HEAD")))))
+        "log" "--ext-diff" "--format=format:%h %s" (concat tracked "..HEAD")))))
 
 (defun magit-insert-unpulled-cherries ()
   (let ((tracked (magit-get-tracked-branch nil t)))
@@ -5819,7 +5819,7 @@ used to inverse the meaning of the prefix argument.
   (let ((process-environment process-environment))
     (unless override-date
       (setenv "GIT_COMMITTER_DATE"
-              (magit-git-string "log" "-1" "--format:format=%cd")))
+              (magit-git-string "log" "-1" "--format:format=%cd" "--ext-diff")))
     (magit-commit-internal "commit" (nconc (list "--no-edit" "--amend")
                                            magit-custom-options))))
 
@@ -5841,7 +5841,7 @@ and ignore the option.
   (let ((process-environment process-environment))
     (unless override-date
       (setenv "GIT_COMMITTER_DATE"
-              (magit-git-string "log" "-1" "--format:format=%cd")))
+              (magit-git-string "log" "-1" "--format:format=%cd" "--ext-diff")))
     (magit-commit-internal "commit" (nconc (list "--only" "--amend")
                                            magit-custom-options))))
 
@@ -5950,7 +5950,7 @@ depending on the value of option `magit-commit-squash-commit'.
       (when (and (member "--amend" args)
                  (not (file-exists-p editmsg)))
         (with-temp-file editmsg
-          (magit-git-insert "log" "-1" "--format=format:%B" "HEAD")))
+          (magit-git-insert "log" "-1" "--ext-diff" "--format=format:%B" "HEAD")))
       (with-current-buffer (find-file-noselect editmsg)
         (funcall (if (functionp magit-server-window-for-commit)
                      magit-server-window-for-commit
@@ -6321,7 +6321,7 @@ Other key binding:
       (apply-partially 'magit-wash-log style 'color t)
     "log"
     (format "--max-count=%d" magit-log-cutoff-length)
-    "--decorate=full" "--color"
+    "--decorate=full" "--color" "--ext-diff"
     (cl-case style
       (long    (if magit-log-show-gpg-status
                    (list "--stat" "--show-signature")
@@ -6637,7 +6637,7 @@ Other key binding:
   (magit-git-insert-section
       (reflogbuf (format "Local history of branch %s" ref))
       (apply-partially 'magit-wash-log 'reflog t)
-    "reflog" "show" "--format=format:%h [%an] %ct %gd %gs"
+    "reflog" "show" "--format=format:%h [%an] %ct %gd %gs" "--ext-diff"
     (format "--max-count=%d" magit-log-cutoff-length) ref))
 
 (defvar magit-reflog-labels
@@ -6727,7 +6727,7 @@ Other key binding:
 (defun magit-diff-range (diff)
   (if (eq major-mode 'magit-commit-mode)
       (let ((revs (split-string
-                   (magit-git-string "rev-list" "-1" "--parents"
+                   (magit-git-string "rev-list" "-1" "--parents" "--ext-diff"
                                      (car (last magit-refresh-args))))))
         (when (= (length revs) 2)
           (cons (cadr revs) (car revs))))
