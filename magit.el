@@ -1825,8 +1825,8 @@ Read `completing-read' documentation for the meaning of the argument."
                                id-str
                              (epg-decode-dn id-obj))))))
                (epg-list-keys (epg-make-context epa-protocol) nil t))))
-  (magit-completing-read prompt keys nil t nil nil
-                         (or (car magit-gpg-secret-key-hist) (car keys)))))
+    (magit-completing-read prompt keys nil nil nil 'magit-gpg-secret-key-hist
+                           (car (or magit-gpg-secret-key-hist keys)))))
 
 ;;;; Various Utilities
 
@@ -3528,8 +3528,6 @@ tracked in the current repository are reverted if
                              (mapconcat 'identity (cons program args) " "))
                   (insert "\n"))))
         (set-marker-insertion-type (magit-section-content-beginning s) nil)
-        (unless (get-buffer-window (current-buffer) t)
-          (magit-section-set-hidden s t))
         (insert "\n")
         (backward-char 2)
         (cons (current-buffer) s)))))
@@ -3726,7 +3724,7 @@ of the Windows \"Powershell\"."
   (if magit-process-quote-curly-braces
       (mapcar (apply-partially 'replace-regexp-in-string
                                "{\\([0-9]+\\)}" "\\\\{\\1\\\\}")
-              args)
+              (magit-flatten-onelevel args))
     args))
 
 ;;;; Mode Api
@@ -4062,7 +4060,8 @@ the current repository."
                    (not (string-prefix-p gitdir file))
                    (member (file-relative-name file topdir) tracked)
                    (let ((auto-revert-mode t))
-                     (auto-revert-handler))))))))))
+                     (auto-revert-handler)
+                     (run-hooks 'magit-revert-buffer-hook))))))))))
 
 ;;; (misplaced)
 ;;;; Diff Options
@@ -5087,7 +5086,7 @@ return the buffer, without displaying it."
        (hunk   (setq section parent))
        (diff   (setq section it)))
      (if section
-         (setq rev  (cadr (magit-diff-range section))
+         (setq rev  (car (magit-diff-range section))
                file (magit-section-info section))
        (unless rev
          (setq rev (magit-get-current-branch))))
@@ -7104,7 +7103,7 @@ If there is no commit at point, then prompt for one."
                                (default-value 'magit-highlight-indentation)
                                :from-end t))))))
       (when (and magit-highlight-trailing-whitespace
-                 (looking-at (concat prefix ".*\\([ \t]+\\)$")))
+                 (looking-at (concat prefix ".*?\\([ \t]+\\)$")))
         (magit-put-face-property (match-beginning 1) (match-end 1)
                                  'magit-whitespace-warning-face))
       (when (or (and (eq indent 'tabs)
